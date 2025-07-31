@@ -1,0 +1,7 @@
+fastapi[standard]
+av
+sentencepiece
+transformers
+protobuf
+accelerate
+qwen-vl-utils[decord]==0.0.8
