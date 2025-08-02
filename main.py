@@ -2,6 +2,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from model_utils.VLM import *
 from model_utils.post_processor import *
+from model_utils.translator import TranslateTh2EN , initialize_translator
 import shutil
 import os
 import torch
@@ -9,6 +10,7 @@ import torch
 app = FastAPI()
 
 model , processor = initialize_vlm_model()
+translator , tokenizer = initialize_translator()
 
 @app.post("/vlm_inference_comp")
 async def vlm_inference_comp_endpoint(
@@ -28,7 +30,14 @@ async def vlm_inference_comp_endpoint(
     result = convert_escaped_newlines(result[0])
     sections = parse_video_comparison_output(result, threshold)
     torch.cuda.empty_cache()
-    return sections
+    return {
+        "video_a_description" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
+        "video_b_description" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
+        "motion_comparison" : TranslateTh2EN(translator , tokenizer , sections["motion_comparison"]),
+        "similarity_score" : sections["similarity_score"],
+        "suggestions" : TranslateTh2EN(translator , tokenizer , sections["suggestions"]),
+        "is_above_threshold" : sections["is_above_threshold"]
+    }
 
 @app.post("/vlm_inference_ask")
 async def vlm_inference_ask_endpoint(
