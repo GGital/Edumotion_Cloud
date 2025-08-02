@@ -12,8 +12,14 @@ You will be provided with a similarity threshold (a floating number between 0 an
 """
 
 
-def build_prompt(threshold: float) -> str:
-  User_Prompt = f""" You are given two videos:
+def build_prompt(threshold: float, specific_term: str = None) -> str:
+    # Extra line for point #3 if a specific term is provided
+    if specific_term:
+        focus_line = f"\n   - Pay special attention to differences in **{specific_term}**."
+    else:
+        focus_line = ""
+
+    User_Prompt = f"""You are given two videos:
 - **Learner's Doing**: This shows how the learner performs the task.
 - **Teacher's Doing**: This shows the correct or ideal way to perform the task.
 
@@ -25,7 +31,7 @@ Please follow these steps:
    - Differences in action types
    - Timing or duration of actions
    - Number of people or moving objects
-   - Direction, speed, or style of movement
+   - Direction, speed, or style of movement{focus_line}
 4. Provide a **similarity score** out of 1 that reflects how similar the two performances are in terms of motion only.
 5. You are also given a similarity threshold `T` (a float between 0 and 1). If `Score / 1 < T`, provide clear and supportive **feedback to the learner**, focusing on what they can improve to better match the teacher’s motion. Be detailed, encouraging, and constructive.
 
@@ -47,7 +53,8 @@ Score: [X]/1
 --- Suggestions for Improvement (if Score < T) ---
 [Only include this if Score/1 < T. Give encouraging and actionable suggestions to help the learner adjust their motion to better match the teacher.]
 """
-  return User_Prompt
+    return User_Prompt
+
 
 def initialize_vlm_model(model_name='Qwen/Qwen2.5-VL-7B-Instruct') :
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -59,8 +66,8 @@ def initialize_vlm_model(model_name='Qwen/Qwen2.5-VL-7B-Instruct') :
     processor = AutoProcessor.from_pretrained(model_name)
     return model, processor
 
-def vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=0.5):
-    user_prompt = build_prompt(threshold)
+def vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=0.5 , additional_prompt= None):
+    user_prompt = build_prompt(threshold , additional_prompt)
     messages = [
         {
             "role": "system",

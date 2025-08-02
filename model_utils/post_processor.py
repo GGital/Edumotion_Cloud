@@ -27,8 +27,8 @@ def parse_video_comparison_output(text: str, threshold: float = 0.5):
 
     # Regex patterns for section headers
     patterns = {
-        "video_a_description": r"### Video A Motion Description\s*(.*?)\s*---",
-        "video_b_description": r"### Video B Motion Description\s*(.*?)\s*---",
+        "video_a_description": r"### Learner's Doing Motion Description\s*(.*?)\s*---",
+        "video_b_description": r"### Teacher's Doing Motion Description\s*(.*?)\s*---",
         "motion_comparison": r"### Motion Comparison\s*(.*?)\s*---",
         "similarity_score": r"### Similarity Score.*?Score:\s*([0-9.]+)/1",
         "suggestions": r"### Suggestions for Improvement.*?\s*(.*)",
@@ -51,3 +51,18 @@ def parse_video_comparison_output(text: str, threshold: float = 0.5):
 
 def convert_escaped_newlines(text: str) -> str:
     return text.replace("\\n", "\n")
+
+
+def clean_text_for_tts(text: str) -> str:
+    # Remove Markdown formatting characters and redundant dashes
+    text = re.sub(r"[*_#\-]+", "", text)
+
+    # Remove the phrase "(if Score < T)" entirely
+    text = re.sub(r"\(if Score\s*</?\s*T\)", "", text, flags=re.IGNORECASE)
+
+    # Remove multiple blank lines or excess whitespace
+    text = re.sub(r"\n\s*\n", "\n", text)  # collapse double newlines
+    text = re.sub(r"\s{2,}", " ", text)    # collapse multiple spaces
+
+    # Strip leading/trailing whitespace
+    return text.strip()
