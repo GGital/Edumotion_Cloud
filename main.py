@@ -13,6 +13,14 @@ import shutil
 import os
 import torch
 
+from model_utils.object_recognition import (
+    InitializeObjectRecognitionModel, 
+    recognize_objects_in_image, 
+    display_recognition_results,
+    is_iou_above_threshold,
+    compare_images_iou
+)
+
 app = FastAPI()
 
 class TTSRequest(BaseModel):
@@ -22,8 +30,14 @@ model , processor = initialize_vlm_model()
 translator , tokenizer = initialize_translator()
 tts_model = VitsModel.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir="./mms").to("cuda")
 tts_tokenizer = VitsTokenizer.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir="./mms")
+object_recognition_model, object_recognition_processor = InitializeObjectRecognitionModel()
+
 
 OUTPUT_DIR = "output_videos"
+UPLOAD_DIR = "uploaded_images"
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/")
 async def root():
@@ -127,6 +141,57 @@ async def text_to_speech_json(request: TTSRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating speech: {str(e)}")
+
+@app.post("/compare-objects/")
+async def compare_objects_api(
+    image1: UploadFile = File(...),
+    image2: UploadFile = File(...),
+    object_name: str = Query(..., description="Name of the object to compare"),
+    threshold: float = Query(0.5, description="IoU threshold for comparison")
+):
+    """
+    Compare objects in two images using IoU threshold.
+    """
+    try:
+        # Validate file types
+        if not image1.content_type.startswith('image/') or not image2.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Both files must be images")
+        
+        # Save uploaded images temporarily
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        temp_image1_path = os.path.join(UPLOAD_DIR, f"temp1_{timestamp}_{image1.filename}")
+        temp_image2_path = os.path.join(UPLOAD_DIR, f"temp2_{timestamp}_{image2.filename}")
+        
+        with open(temp_image1_path, "wb") as buffer1:
+            shutil.copyfileobj(image1.file, buffer1)
+        with open(temp_image2_path, "wb") as buffer2:
+            shutil.copyfileobj(image2.file, buffer2)
+        
+        # Compare images
+        is_match = compare_images_iou(temp_image1_path, temp_image2_path, object_name, object_recognition_model, object_recognition_processor, threshold)
+        
+        response_data = {
+            "object_name": object_name,
+            "threshold": threshold,
+            "images_match": is_match,
+            "image1_filename": image1.filename,
+            "image2_filename": image2.filename
+        }
+        
+        # Clean up temporary files
+        for temp_path in [temp_image1_path, temp_image2_path]:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        
+        return JSONResponse(content=response_data)
+    
+    except Exception as e:
+        # Clean up temporary files in case of error
+        for temp_path in [temp_image1_path, temp_image2_path]:
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.remove(temp_path)
+        
+        raise HTTPException(status_code=500, detail=f"Error comparing images: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
