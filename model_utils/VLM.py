@@ -7,7 +7,7 @@ from qwen_vl_utils import process_vision_info
 
 sys_prompt_comp = """ You are a video reasoning assistant specialized in analyzing and comparing motion in videos.
 You must reason step by step about the motion occurring in each video, and then compare the motion patterns. Always focus primarily on human and object movement, action sequence, and timing.
-You will be provided with a similarity threshold (a floating number between 0 and 1). After assigning a similarity score out of 1, compare it against the threshold. If the similarity score does not surpass the threshold, suggest specific and actionable improvements that **Video A** should make to better match **Video B** in terms of motion.
+You will be provided with a similarity threshold (a floating number between 0 and 1). After assigning a similarity score out of 1, compare it against the threshold. If the score is below the threshold, give **clear, actionable feedback** that helps the person in **Video A** improve their performance to match **Video B**. The feedback should sound like advice for a learner, using an encouraging and instructional tone.
 """
 
 
@@ -46,12 +46,12 @@ Please follow these steps:
 1. Describe the motion in **Video A** step-by-step. Focus on what the subject does, the direction and intensity of movement, and the action sequence.
 2. Do the same for **Video B**, using the same level of detail.
 3. Compare the two videos specifically in terms of motion. Highlight:
-   - Any differences in action types
+   - Differences in action types
    - Timing or duration of actions
    - Number of people or moving objects
    - Direction, speed, or style of movement
-4. Based on your comparison, provide a **similarity score** out of 1 that reflects how similar the two videos are in terms of motion only.
-5. You are also given a similarity threshold `T` (a float between 0 and 1). If `Score` is **less than** `T`, suggest what Video A could change or improve in terms of motion to better match Video B.
+4. Provide a **similarity score** out of 1 that reflects how similar the two videos are in terms of motion only.
+5. You are also given a similarity threshold `T` (a float between 0 and 1). If `Score / 1 < T`, provide helpful suggestions **as if you're giving feedback to a learner** who is trying to improve their performance in Video A to better match Video B. Be specific and constructive.
 
 **Threshold (T)**: {threshold:.2f}
 
@@ -69,7 +69,7 @@ Please follow these steps:
 Score: [X]/1
 
 --- Suggestions for Improvement (if Score < T) ---
-[Only output this section if Score < T. Suggest specific changes Video A can make to more closely resemble Video B in motion.]
+[Only include this if Score/1 < T. Give specific, supportive advice to the learner performing in Video A, e.g., “Try to slow down your hand movement to match the pacing in Video B” or “Make your gestures more deliberate when interacting with the object.”]
 """
   return User_Prompt
 
