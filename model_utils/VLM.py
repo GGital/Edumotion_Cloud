@@ -4,6 +4,19 @@ import numpy as np
 from huggingface_hub import hf_hub_download
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoTokenizer, AutoProcessor
 from qwen_vl_utils import process_vision_info
+from dotenv import load_dotenv
+import os
+from openai import OpenAI
+
+
+load_dotenv()
+
+api_key = os.getenv("OPENROUTER_API_KEY")
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+)
 
 sys_prompt_comp = """ You are a video reasoning assistant specialized in analyzing and comparing motion in videos.
 You must reason step by step about the motion occurring in each video, and then compare the motion patterns. Always focus primarily on human and object movement, action sequence, and timing.
@@ -103,3 +116,27 @@ def vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sy
         generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )
     return output_text
+
+def openrouter_inference(videoA_path, videoB_path , sys_prompt=sys_prompt_comp, threshold=0.5 , additional_prompt= None) : 
+    user_prompt = build_prompt(threshold , additional_prompt)
+    completion = client.chat.completions.create(
+        extra_body={},
+        model="qwen/qwen2.5-vl-32b-instruct",
+        messages=[
+        {
+            "role": "system",
+            "content" : [
+                {"type" : "text" , "text" : sys_prompt}
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+                {"type": "video", "video": videoA_path},
+                {"type": "video", "video": videoB_path},
+                {"type": "text", "text": user_prompt },
+            ],
+        },
+        ]
+    )
+    return completion.choices[0].message.content

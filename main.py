@@ -64,22 +64,60 @@ async def vlm_inference_comp_endpoint(
     sections = parse_video_comparison_output(result, threshold)
 
     # Removing any special characters from the sections
-    sections = {clean_text_for_tts(k): clean_text_for_tts(v) for k, v in sections.items()}
+    sections = {k: clean_text_for_tts(v) for k, v in sections.items()}
 
     torch.cuda.empty_cache()
     return {
-        "Learner's doing Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
-        "Teacher's doing Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
+        "Learner_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
+        "Teacher_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
         "motion_comparison_th" : TranslateTh2EN(translator , tokenizer , sections["motion_comparison"]),
         "suggestions_th" : TranslateTh2EN(translator , tokenizer , sections["suggestions"]),
-        "Learner's doing Description_en" : sections["video_a_description"],
-        "Teacher's doing Description_en" : sections["video_b_description"],
+        "Learner_doing_Description_en" : sections["video_a_description"],
+        "Teacher_doing_Description_en" : sections["video_b_description"],
         "motion_comparison_en" : sections["motion_comparison"],
         "suggestions_en" : sections["suggestions"],
         "similarity_score" : sections["similarity_score"],
         "is_above_threshold" : sections["is_above_threshold"]
     }
 
+@app.post("/vlm_openrouter")
+async def vlm_openrouter_endpoint(
+    videoA: UploadFile = File(...),
+    videoB: UploadFile = File(...),
+    threshold: float = Form(0.5),
+    additional_prompt: str = Form(None),
+):
+    videoA_path = f"temp_{videoA.filename}"
+    videoB_path = f"temp_{videoB.filename}"
+    with open(videoA_path, "wb") as buffer:
+        shutil.copyfileobj(videoA.file, buffer)
+    with open(videoB_path, "wb") as buffer:
+        shutil.copyfileobj(videoB.file, buffer)
+    
+    result = openrouter_inference(videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=threshold , additional_prompt=additional_prompt)
+    
+    os.remove(videoA_path)
+    os.remove(videoB_path)
+    
+    result = convert_escaped_newlines(result[0])
+    sections = parse_video_comparison_output(result, threshold)
+
+    # Removing any special characters from the sections
+    sections = {k: clean_text_for_tts(v) for k, v in sections.items()}
+
+    torch.cuda.empty_cache()
+    return {
+        "Learner_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
+        "Teacher_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
+        "motion_comparison_th" : TranslateTh2EN(translator , tokenizer , sections["motion_comparison"]),
+        "suggestions_th" : TranslateTh2EN(translator , tokenizer , sections["suggestions"]),
+        "Learner_doing_Description_en" : sections["video_a_description"],
+        "Teacher_doing_Description_en" : sections["video_b_description"],
+        "motion_comparison_en" : sections["motion_comparison"],
+        "suggestions_en" : sections["suggestions"],
+        "similarity_score" : sections["similarity_score"],
+        "is_above_threshold" : sections["is_above_threshold"]
+    }
 
 @app.post("/tts")
 async def text_to_speech_json(request: TTSRequest):
