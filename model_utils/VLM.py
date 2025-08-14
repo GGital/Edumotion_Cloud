@@ -7,16 +7,16 @@ from qwen_vl_utils import process_vision_info
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
-
+import requests
 
 load_dotenv()
 
-api_key = os.getenv("OPENROUTER_API_KEY")
+# api_key = os.getenv("OPENROUTER_API_KEY")
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
-)
+# client = OpenAI(
+#    base_url="https://openrouter.ai/api/v1",
+#     api_key=api_key,
+# )
 
 sys_prompt_comp = """ You are a video reasoning assistant specialized in analyzing and comparing motion in videos.
 You must reason step by step about the motion occurring in each video, and then compare the motion patterns. Always focus primarily on human and object movement, action sequence, and timing.
@@ -76,7 +76,7 @@ def initialize_vlm_model(model_name='Qwen/Qwen2.5-VL-7B-Instruct') :
         attn_implementation="flash_attention_2",
         device_map="auto",
     ).eval()
-    processor = AutoProcessor.from_pretrained(model_name)
+    processor = AutoProcessor.from_pretrained(model_name , use_fast=True)
     return model, processor
 
 def vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=0.5 , additional_prompt= None):
@@ -117,26 +117,26 @@ def vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sy
     )
     return output_text
 
-def openrouter_inference(videoA_path, videoB_path , sys_prompt=sys_prompt_comp, threshold=0.5 , additional_prompt= None) : 
-    user_prompt = build_prompt(threshold , additional_prompt)
+""" def openrouter_inference(videoA_filename, videoB_filename, sys_prompt, threshold=0.5, additional_prompt=None):
+    user_prompt = build_prompt(threshold, additional_prompt)
+
+    # Upload videos to get short public URLs
+    
+    server_url = os.getenv("SERVER_URL")
+
+    videoA_url = f"{server_url}/media/{videoA_filename}"
+    videoB_url = f"{server_url}/media/{videoB_filename}"
+
     completion = client.chat.completions.create(
-        extra_body={},
         model="qwen/qwen2.5-vl-32b-instruct",
         messages=[
-        {
-            "role": "system",
-            "content" : [
-                {"type" : "text" , "text" : sys_prompt}
-            ]
-        },
-        {
-            "role": "user",
-            "content": [
-                {"type": "video", "video": videoA_path},
-                {"type": "video", "video": videoB_path},
-                {"type": "text", "text": user_prompt },
-            ],
-        },
+            {"role": "system", "content": [{"type": "text", "text": sys_prompt}]},
+            {"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": videoA_url}},
+                {"type": "image_url", "image_url": {"url": videoB_url}},
+                {"type": "text", "text": user_prompt}
+            ]}
         ]
     )
-    return completion.choices[0].message.content
+
+    return completion.choices[0].message["content"] """
