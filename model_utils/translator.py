@@ -3,7 +3,7 @@ import torch
 
 def initialize_translator():
     model_id = "scb10x/Typhoon-translate-4b"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_id , use_fast = True)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
