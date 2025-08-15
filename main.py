@@ -7,6 +7,7 @@ from datetime import datetime
 from model_utils.VLM import *
 from model_utils.post_processor import *
 from model_utils.translator import TranslateTh2EN , initialize_translator
+from model_utils.vllm_translate import TyphoonTranslateClient
 import scipy.io.wavfile
 from pydantic import BaseModel
 from transformers import VitsTokenizer, VitsModel, set_seed
@@ -34,6 +35,8 @@ tts_model = VitsModel.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir
 tts_tokenizer = VitsTokenizer.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir="./mms")
 object_recognition_model, object_recognition_processor = InitializeObjectRecognitionModel()
 
+translation_client = TyphoonTranslateClient("http://localhost:8080")
+print("Server health:", translation_client.health_check())
 
 OUTPUT_DIR = "output_videos"
 UPLOAD_DIR = "uploaded_images"
@@ -44,13 +47,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.get("/")
 async def root():
     return {"message": "Edumotion Backend API is running"}
-
-@app.get("/file/{filename}")
-def get_file(filename: str):
-    file_path = os.path.join(MEDIA_FOLDER, filename)
-    if not os.path.isfile(file_path):
-        return {"error": "File not found"}
-    return FileResponse(file_path)
 
 @app.post("/vlm_inference_comp")
 async def vlm_inference_comp_endpoint(
@@ -74,12 +70,20 @@ async def vlm_inference_comp_endpoint(
     # Removing any special characters from the sections
     sections = {k: clean_text_for_tts(v) for k, v in sections.items()}
 
-    torch.cuda.empty_cache()
+    text_inputs = [
+        sections["video_a_description"],
+        sections["video_b_description"],
+        sections["motion_comparison"],
+        sections["suggestions"]
+    ]
+
+    # Translate sections to Thai
+    thai_results = translation_client.batch_translate(text_inputs, "Thai")
     return {
-        "Learner_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
-        "Teacher_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
-        "motion_comparison_th" : TranslateTh2EN(translator , tokenizer , sections["motion_comparison"]),
-        "suggestions_th" : TranslateTh2EN(translator , tokenizer , sections["suggestions"]),
+        "Learner_doing_Description_th" : thai_results[0],
+        "Teacher_doing_Description_th" : thai_results[1],
+        "motion_comparison_th" : thai_results[2],
+        "suggestions_th" : thai_results[3],
         "Learner_doing_Description_en" : sections["video_a_description"],
         "Teacher_doing_Description_en" : sections["video_b_description"],
         "motion_comparison_en" : sections["motion_comparison"],

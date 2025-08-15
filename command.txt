@@ -5,3 +5,5 @@ wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash
 pip install flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 
 pip install -q -r requirements.txt
+
+vllm serve scb10x/typhoon-translate-4b \ --host 0.0.0.0 \ --port 8080 \ --max-model-len 8192 \ --dtype bfloat16 \ --served-model-name typhoon-translate
