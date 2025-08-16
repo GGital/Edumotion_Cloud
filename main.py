@@ -8,6 +8,7 @@ from model_utils.VLM import *
 from model_utils.post_processor import *
 from model_utils.translator import TranslateTh2EN , initialize_translator
 from model_utils.vllm_translate import TyphoonTranslateClient
+# from model_utils.vllm_vlm import *
 import scipy.io.wavfile
 from pydantic import BaseModel
 from transformers import VitsTokenizer, VitsModel, set_seed
@@ -30,13 +31,16 @@ class TTSRequest(BaseModel):
     text: str
 
 model , processor = initialize_vlm_model()
-translator , tokenizer = initialize_translator()
+# translator , tokenizer = initialize_translator()
 tts_model = VitsModel.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir="./mms").to("cuda")
 tts_tokenizer = VitsTokenizer.from_pretrained("VIZINTZOR/MMS-TTS-THAI-MALEV2", cache_dir="./mms")
 object_recognition_model, object_recognition_processor = InitializeObjectRecognitionModel()
 
 translation_client = TyphoonTranslateClient("http://localhost:8080")
 print("Server health:", translation_client.health_check())
+
+# vlm_client = VLMServiceClient(base_url="http://localhost:7800")
+
 
 OUTPUT_DIR = "output_videos"
 UPLOAD_DIR = "uploaded_images"
@@ -61,7 +65,7 @@ async def vlm_inference_comp_endpoint(
         shutil.copyfileobj(videoA.file, buffer)
     with open(videoB_path, "wb") as buffer:
         shutil.copyfileobj(videoB.file, buffer)
-    result = vlm_inference_comp(model, processor, videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=threshold , additional_prompt=additional_prompt)
+    result = vlm_inference_comp(model , processor , videoA_path, videoB_path, sys_prompt_comp, threshold, additional_prompt)
     os.remove(videoA_path)
     os.remove(videoB_path)
     result = convert_escaped_newlines(result[0])
@@ -91,45 +95,6 @@ async def vlm_inference_comp_endpoint(
         "similarity_score" : sections["similarity_score"],
         "is_above_threshold" : sections["is_above_threshold"]
     }
-
-""" @app.post("/vlm_openrouter")
-async def vlm_openrouter_endpoint(
-    videoA: UploadFile = File(...),
-    videoB: UploadFile = File(...),
-    threshold: float = Form(0.5),
-    additional_prompt: str = Form(None),
-):
-    videoA_path = f"temp_{videoA.filename}"
-    videoB_path = f"temp_{videoB.filename}"
-    with open(f"media/{videoA_path}", "wb") as buffer:
-        shutil.copyfileobj(videoA.file, buffer)
-    with open(f"media/{videoB_path}", "wb") as buffer:
-        shutil.copyfileobj(videoB.file, buffer)
-    
-    result = openrouter_inference(videoA_path, videoB_path, sys_prompt=sys_prompt_comp, threshold=threshold , additional_prompt=additional_prompt)
-    
-    os.remove(videoA_path)
-    os.remove(videoB_path)
-    
-    result = convert_escaped_newlines(result)
-    sections = parse_video_comparison_output(result, threshold)
-
-    # Removing any special characters from the sections
-    sections = {k: clean_text_for_tts(v) for k, v in sections.items()}
-
-    torch.cuda.empty_cache()
-    return {
-        "Learner_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_a_description"]),
-        "Teacher_doing_Description_th" : TranslateTh2EN(translator , tokenizer , sections["video_b_description"]),
-        "motion_comparison_th" : TranslateTh2EN(translator , tokenizer , sections["motion_comparison"]),
-        "suggestions_th" : TranslateTh2EN(translator , tokenizer , sections["suggestions"]),
-        "Learner_doing_Description_en" : sections["video_a_description"],
-        "Teacher_doing_Description_en" : sections["video_b_description"],
-        "motion_comparison_en" : sections["motion_comparison"],
-        "suggestions_en" : sections["suggestions"],
-        "similarity_score" : sections["similarity_score"],
-        "is_above_threshold" : sections["is_above_threshold"]
-    } """
 
 @app.post("/tts")
 async def text_to_speech_json(request: TTSRequest):

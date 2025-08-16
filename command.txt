@@ -2,8 +2,10 @@ uvicorn main:app --host 0.0.0.0 --port 7860 --reload
 
 wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 
-pip install flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+pip install -q flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 
 pip install -q -r requirements.txt
 
-vllm serve scb10x/typhoon-translate-4b \ --host 0.0.0.0 \ --port 8080 \ --max-model-len 8192 \ --dtype bfloat16 \ --served-model-name typhoon-translate
+vllm serve scb10x/typhoon-translate-4b --port 8080 --max-model-len 4096 --max-num-seqs 4 --max-num-batched-tokens 4096 --gpu-memory-utilization 0.5 --served-model-name typhoon-translate
+
+# vllm serve Qwen/Qwen2.5-VL-7B-Instruct  --port 7800 --gpu-memory-utilization 0.5 --max-model-len 4096  --max-num-seqs 2  --tensor-parallel-size 1 --trust-remote-code  --served-model-name qwen2.5-vl-7b-instruct --enforce-eager --dtype auto

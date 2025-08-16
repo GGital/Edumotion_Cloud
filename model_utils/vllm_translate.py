@@ -98,3 +98,11 @@ class TyphoonTranslateClient:
             results = list(executor.map(translate_single, texts))
         
         return results
+    
+    def health_check(self) -> dict:
+        """Check if the vLLM server is healthy"""
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=10)
+            return {"status": "healthy" if response.status_code == 200 else "unhealthy"}
+        except:
+            return {"status": "unreachable"}
